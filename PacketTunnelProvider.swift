@@ -3,15 +3,12 @@ import os.log
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
 
-    private var singboxProcess: Process?
     private let logger = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "VPNApp", category: "PacketTunnel")
 
     override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
-        // Define the path for the Sing-box configuration
-        let configDirectory = FileManager.default.temporaryDirectory
-        let configPath = configDirectory.appendingPathComponent("singbox-config.json")
+        os_log("Starting VPN tunnel...", log: logger, type: .info)
 
-        // Define the Sing-box configuration
+        // Create the JSON config string (can be customized later)
         let configJSON = """
         {
           "log": {
@@ -60,63 +57,37 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
         """
 
-        // Write the configuration to the temporary file
-        do {
-            try configJSON.write(to: configPath, atomically: true, encoding: .utf8)
-        } catch {
-            os_log("Failed to write Sing-box configuration: %{public}@", log: logger, type: .error, error.localizedDescription)
-            completionHandler(error)
-            return
-        }
+        // Set up virtual interface settings for the tunnel
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "10.0.0.1")
+        settings.ipv4Settings = NEIPv4Settings(addresses: ["10.0.0.2"], subnetMasks: ["255.255.255.0"])
+        settings.mtu = 1500
+        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8"])
 
-        // Locate the Sing-box binary in the app bundle
-        guard let singboxPath = Bundle.main.path(forResource: "sing-box", ofType: nil) else {
-            let error = NSError(domain: "PacketTunnelProvider", code: 1, userInfo: [NSLocalizedDescriptionKey: "Sing-box binary not found in app bundle."])
-            os_log("Sing-box binary not found.", log: logger, type: .error)
-            completionHandler(error)
-            return
-        }
+        setTunnelNetworkSettings(settings) { [weak self] error in
+            guard let self = self else { return }
 
-        // Initialize and configure the Sing-box process
-        singboxProcess = Process()
-        singboxProcess?.executableURL = URL(fileURLWithPath: singboxPath)
-        singboxProcess?.arguments = ["run", "-c", configPath.path]
-        singboxProcess?.standardOutput = FileHandle.nullDevice
-        singboxProcess?.standardError = FileHandle.nullDevice
-
-        // Start the Sing-box process
-        do {
-            try singboxProcess?.run()
-        } catch {
-            os_log("Failed to start Sing-box process: %{public}@", log: logger, type: .error, error.localizedDescription)
-            completionHandler(error)
-            return
-        }
-
-        // Configure the virtual network settings
-        let tunnelNetworkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "10.0.0.1")
-        tunnelNetworkSettings.ipv4Settings = NEIPv4Settings(addresses: ["10.0.0.2"], subnetMasks: ["255.255.255.0"])
-        tunnelNetworkSettings.mtu = 1500
-        tunnelNetworkSettings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8"])
-
-        // Apply the network settings
-        setTunnelNetworkSettings(tunnelNetworkSettings) { [weak self] error in
             if let error = error {
-                os_log("Failed to set tunnel network settings: %{public}@", log: self?.logger ?? .default, type: .error, error.localizedDescription)
+                os_log("Failed to apply tunnel settings: %{public}@", log: self.logger, type: .error, error.localizedDescription)
                 completionHandler(error)
+                return
+            }
+
+            // Start the embedded Sing-box engine
+            let startResult = libbox_start(configJSON)
+            if startResult != 0 {
+                os_log("libbox_start() failed with code: %d", log: self.logger, type: .error, startResult)
+                completionHandler(NSError(domain: "PacketTunnelProvider", code: Int(startResult), userInfo: [NSLocalizedDescriptionKey: "libbox_start failed"]))
             } else {
-                os_log("Tunnel network settings applied successfully.", log: self?.logger ?? .default, type: .info)
+                os_log("Sing-box engine started successfully.", log: self.logger, type: .info)
                 completionHandler(nil)
             }
         }
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        // Terminate the Sing-box process if it's running
-        if let process = singboxProcess, process.isRunning {
-            process.terminate()
-            os_log("Sing-box process terminated.", log: logger, type: .info)
-        }
+        os_log("Stopping tunnel...", log: logger, type: .info)
+        libbox_stop()
+        os_log("Sing-box engine stopped.", log: logger, type: .info)
         completionHandler()
     }
 }
