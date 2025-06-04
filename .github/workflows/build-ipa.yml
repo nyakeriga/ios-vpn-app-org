@@ -1,0 +1,43 @@
+name: Build IPA
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.7
+
+      - name: Install dependencies
+        run: |
+          gem install bundler
+          bundle install
+
+      - name: Build .ipa
+        run: |
+          xcodebuild -workspace ios-vpn-app-org.xcworkspace \
+                     -scheme ios-vpn-app-org \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -archivePath ${{ github.workspace }}/build/ios-vpn-app-org.xcarchive \
+                     archive
+
+          xcodebuild -exportArchive \
+                     -archivePath ${{ github.workspace }}/build/ios-vpn-app-org.xcarchive \
+                     -exportOptionsPlist ExportOptions.plist \
+                     -exportPath ${{ github.workspace }}/build/ipa
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-vpn-app-org-ipa
+          path: build/ipa/*.ipa
