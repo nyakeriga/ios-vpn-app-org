@@ -7,37 +7,54 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    name: Build iOS VPN .ipa
+    runs-on: macos-13 # You can specify macos-14 if needed
+
     steps:
-      - name: Checkout repository
+      - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Ruby
+      - name: 🧰 Set up Ruby and Bundler
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 2.7
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
           gem install bundler
-          bundle install
+          bundle install || echo "No Gemfile found, continuing..."
 
-      - name: Build .ipa
+      # Optional: Enable Xcode version selection
+      - name: 🎯 Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.0.app
+
+      - name: 🏗️ Build .xcarchive
         run: |
           xcodebuild -workspace ios-vpn-app-org.xcworkspace \
                      -scheme ios-vpn-app-org \
                      -sdk iphoneos \
                      -configuration Release \
                      -archivePath ${{ github.workspace }}/build/ios-vpn-app-org.xcarchive \
-                     archive
+                     clean archive | tee xcodebuild.log | xcpretty
 
+      - name: 📦 Export .ipa
+        run: |
           xcodebuild -exportArchive \
                      -archivePath ${{ github.workspace }}/build/ios-vpn-app-org.xcarchive \
                      -exportOptionsPlist ExportOptions.plist \
-                     -exportPath ${{ github.workspace }}/build/ipa
+                     -exportPath ${{ github.workspace }}/build/ipa \
+                     -allowProvisioningUpdates \
+                     -verbose
 
-      - name: Upload .ipa artifact
+      - name: 📤 Upload .ipa artifact
         uses: actions/upload-artifact@v3
         with:
           name: ios-vpn-app-org-ipa
           path: build/ipa/*.ipa
+
+      - name: 🧾 Upload Xcode log (for debugging if build fails)
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
