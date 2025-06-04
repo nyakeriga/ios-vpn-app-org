@@ -4,16 +4,34 @@
 <dict>
     <key>method</key>
     <string>development</string>
+
     <key>signingStyle</key>
     <string>manual</string>
+
     <key>stripSwiftSymbols</key>
     <true/>
+
     <key>compileBitcode</key>
     <false/>
+
     <key>destination</key>
     <string>export</string>
+
     <key>thinning</key>
     <string>&lt;none&gt;</string>
+
+    <key>signingCertificate</key>
+    <string>Apple Development</string>
+
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.example.iosvpn</key>
+        <string>iOS VPN App Dev Profile</string>
+        <key>com.example.iosvpn.PacketTunnel</key>
+        <string>VPN Tunnel Extension Dev Profile</string>
+    </dict>
 </dict>
 </plist>
-
