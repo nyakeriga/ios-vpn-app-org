@@ -18,28 +18,6 @@
   ],
   "outbounds": [
     {
-      "type": "vless",
-      "tag": "vless-out",
-      "server": "singbox.example.com",
-      "server_port": 443,
-      "uuid": "c6df03fe-98b7-4cf0-a4a6-38d8e92f9d88",
-      "flow": "xtls-rprx-vision",
-      "tls": {
-        "enabled": true,
-        "server_name": "singbox.example.com",
-        "reality": {
-          "enabled": false
-        }
-      },
-      "transport": {
-        "type": "ws",
-        "path": "/ws",
-        "headers": {
-          "Host": "singbox.example.com"
-        }
-      }
-    },
-    {
       "type": "vmess",
       "tag": "vmess-out",
       "server": "r3.wy888.us",
@@ -70,4 +48,3 @@
     ]
   }
 }
-
