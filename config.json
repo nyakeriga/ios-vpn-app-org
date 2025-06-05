@@ -20,22 +20,41 @@
     {
       "type": "vless",
       "tag": "vless-out",
-      "server": "singbox.example.com",  // 🔁 replace with your real server IP or domain
+      "server": "singbox.example.com",
       "server_port": 443,
-      "uuid": "c6df03fe-98b7-4cf0-a4a6-38d8e92f9d88",  // ✅ Your real UUID
+      "uuid": "c6df03fe-98b7-4cf0-a4a6-38d8e92f9d88",
       "flow": "xtls-rprx-vision",
       "tls": {
         "enabled": true,
-        "server_name": "singbox.example.com",  // 🔁 same as above
+        "server_name": "singbox.example.com",
         "reality": {
           "enabled": false
         }
       },
       "transport": {
         "type": "ws",
-        "path": "/ws",  // ✅ Your real WebSocket path
+        "path": "/ws",
         "headers": {
           "Host": "singbox.example.com"
+        }
+      }
+    },
+    {
+      "type": "vmess",
+      "tag": "vmess-out",
+      "server": "r3.wy888.us",
+      "server_port": 443,
+      "uuid": "b831381d-6324-4d53-ad4f-8cda48b30811",
+      "security": "aes-128-gcm",
+      "tls": {
+        "enabled": true,
+        "server_name": "r3.wy888.us"
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/ray",
+        "headers": {
+          "Host": "r3.wy888.us"
         }
       }
     }
@@ -51,3 +70,4 @@
     ]
   }
 }
+
