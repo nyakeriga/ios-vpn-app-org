@@ -1,17 +1,19 @@
 import NetworkExtension
 import os.log
-import Singbox  // this is the generated framework
+import Singbox  // Import your bound Go framework
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
 
-    private let logger = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "VPNApp", category: "PacketTunnel")
+    private let logger = OSLog(subsystem: "com.ns.vpn", category: "PacketTunnel")
 
     override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         os_log("Starting VPN tunnel...", log: logger, type: .info)
 
         let configJSON = """
         {
-          "log": { "level": "info" },
+          "log": {
+            "level": "info"
+          },
           "inbounds": [{
             "type": "tun",
             "tag": "tun-in",
@@ -45,46 +47,48 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             "geoip": true
           },
           "dns": {
-            "servers": [{ "tag": "dns-remote", "address": "8.8.8.8" }]
+            "servers": [
+              {
+                "tag": "dns-remote",
+                "address": "8.8.8.8"
+              }
+            ]
           }
         }
         """
 
+        // VPN network settings
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "10.0.0.1")
         settings.ipv4Settings = NEIPv4Settings(addresses: ["10.0.0.2"], subnetMasks: ["255.255.255.0"])
         settings.mtu = 1500
         settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8"])
 
-        setTunnelNetworkSettings(settings) { [weak self] error in
-            guard let self = self else { return }
-
+        // Apply network settings
+        setTunnelNetworkSettings(settings) { error in
             if let error = error {
                 os_log("Failed to apply tunnel settings: %{public}@", log: self.logger, type: .error, error.localizedDescription)
                 completionHandler(error)
                 return
             }
 
+            // Call into Go code
             let result = StartSingbox(configJSON)
             if result != 0 {
-                os_log("Sing-box failed to start, code %d", log: self.logger, type: .error, result)
-                completionHandler(NSError(domain: "PacketTunnel", code: Int(result), userInfo: nil))
+                os_log("StartSingbox() failed with code: %d", log: self.logger, type: .error, result)
+                let err = NSError(domain: "VPN", code: Int(result), userInfo: [NSLocalizedDescriptionKey: "StartSingbox failed with code \(result)"])
+                completionHandler(err)
             } else {
-                os_log("Sing-box started successfully", log: self.logger, type: .info)
+                os_log("Sing-box engine started successfully.", log: self.logger, type: .info)
                 completionHandler(nil)
             }
         }
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        os_log("Stopping tunnel...", log: logger, type: .info)
+        os_log("Stopping VPN tunnel...", log: logger, type: .info)
         StopSingbox()
-        completionHandler()
-    }
-}
-
-
-        libbox_stop()
         os_log("Sing-box engine stopped.", log: logger, type: .info)
         completionHandler()
     }
 }
+
