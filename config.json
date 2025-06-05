@@ -20,22 +20,22 @@
     {
       "type": "vless",
       "tag": "vless-out",
-      "server": "your.server.com",
+      "server": "singbox.example.com",  // 🔁 replace with your real server IP or domain
       "server_port": 443,
-      "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "uuid": "c6df03fe-98b7-4cf0-a4a6-38d8e92f9d88",  // ✅ Your real UUID
       "flow": "xtls-rprx-vision",
       "tls": {
         "enabled": true,
-        "server_name": "your.server.com",
+        "server_name": "singbox.example.com",  // 🔁 same as above
         "reality": {
           "enabled": false
         }
       },
       "transport": {
         "type": "ws",
-        "path": "/websocket",
+        "path": "/ws",  // ✅ Your real WebSocket path
         "headers": {
-          "Host": "your.server.com"
+          "Host": "singbox.example.com"
         }
       }
     }
