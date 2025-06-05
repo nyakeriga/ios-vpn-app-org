@@ -1,5 +1,6 @@
 import NetworkExtension
 import os.log
+import Singbox  // this is the generated framework
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
 
@@ -8,12 +9,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         os_log("Starting VPN tunnel...", log: logger, type: .info)
 
-        // Create the JSON config string (can be customized later)
         let configJSON = """
         {
-          "log": {
-            "level": "info"
-          },
+          "log": { "level": "info" },
           "inbounds": [{
             "type": "tun",
             "tag": "tun-in",
@@ -47,17 +45,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             "geoip": true
           },
           "dns": {
-            "servers": [
-              {
-                "tag": "dns-remote",
-                "address": "8.8.8.8"
-              }
-            ]
+            "servers": [{ "tag": "dns-remote", "address": "8.8.8.8" }]
           }
         }
         """
 
-        // Set up virtual interface settings for the tunnel
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "10.0.0.1")
         settings.ipv4Settings = NEIPv4Settings(addresses: ["10.0.0.2"], subnetMasks: ["255.255.255.0"])
         settings.mtu = 1500
@@ -72,13 +64,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 return
             }
 
-            // Start the embedded Sing-box engine
-            let startResult = libbox_start(configJSON)
-            if startResult != 0 {
-                os_log("libbox_start() failed with code: %d", log: self.logger, type: .error, startResult)
-                completionHandler(NSError(domain: "PacketTunnelProvider", code: Int(startResult), userInfo: [NSLocalizedDescriptionKey: "libbox_start failed"]))
+            let result = StartSingbox(configJSON)
+            if result != 0 {
+                os_log("Sing-box failed to start, code %d", log: self.logger, type: .error, result)
+                completionHandler(NSError(domain: "PacketTunnel", code: Int(result), userInfo: nil))
             } else {
-                os_log("Sing-box engine started successfully.", log: self.logger, type: .info)
+                os_log("Sing-box started successfully", log: self.logger, type: .info)
                 completionHandler(nil)
             }
         }
@@ -86,6 +77,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         os_log("Stopping tunnel...", log: logger, type: .info)
+        StopSingbox()
+        completionHandler()
+    }
+}
+
+
         libbox_stop()
         os_log("Sing-box engine stopped.", log: logger, type: .info)
         completionHandler()
