@@ -1,39 +1,66 @@
 package main
 
+/*
+#include <stdlib.h>
+*/
 import "C"
 
 import (
 	"log"
 	"os"
-	"path/filepath"
+	"os/signal"
+	"syscall"
 
 	"github.com/sagernet/sing-box"
 )
 
-//export StartSingBox
-func StartSingBox() {
-	// Locate config in app bundle (iOS)
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("getwd failed: %v", err)
+var app *singbox.App
+
+//export StartSingbox
+func StartSingbox(configJson *C.char) C.int {
+	configStr := C.GoString(configJson)
+	configFile := "/tmp/sbox-config.json"
+
+	// Write the config file
+	if err := os.WriteFile(configFile, []byte(configStr), 0644); err != nil {
+		log.Printf("Failed to write config file: %v\n", err)
+		return 1
 	}
 
-	configPath := filepath.Join(dir, "config.json")
-	log.Printf("Loading config: %s", configPath)
-
-	engine, err := singbox.New(singbox.Options{
-		ConfigPath: configPath,
-	})
-	if err != nil {
-		log.Fatalf("failed to create engine: %v", err)
+	opts := &singbox.Options{
+		ConfigPath: configFile,
 	}
 
-	err = engine.Start()
+	var err error
+	app, err = singbox.New(opts)
 	if err != nil {
-		log.Fatalf("failed to start engine: %v", err)
+		log.Printf("Failed to create sing-box app: %v\n", err)
+		return 2
 	}
 
-	log.Println("Sing-box started")
+	// Signal listener to gracefully close the app
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+		<-c
+		app.Close()
+	}()
+
+	if err := app.Start(); err != nil {
+		log.Printf("Failed to start sing-box: %v\n", err)
+		return 3
+	}
+
+	log.Printf("Sing-box started successfully.\n")
+	return 0
+}
+
+//export StopSingbox
+func StopSingbox() {
+	if app != nil {
+		app.Close()
+		log.Printf("Sing-box stopped.\n")
+	}
 }
 
 func main() {}
