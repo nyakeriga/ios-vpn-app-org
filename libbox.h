@@ -1,4 +1,5 @@
 // libbox.h
+
 #ifndef LIBBOX_H
 #define LIBBOX_H
 
@@ -6,8 +7,9 @@
 extern "C" {
 #endif
 
-int singbox_main(int argc, char **argv);
-void singbox_exit(void);
+// These are the functions you are calling from Swift
+int libbox_start(const char *configJSON);
+void libbox_stop(void);
 
 #ifdef __cplusplus
 }
