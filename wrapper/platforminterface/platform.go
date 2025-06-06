@@ -1,7 +1,7 @@
 package platform
 
 import (
-    "github.com/sgameet/sing-box/experimental/libbox"
+    "github.com/sagernet/sing-box/experimental/libbox"
 )
 
 type iOSPlatform struct{}
@@ -15,15 +15,16 @@ func (p *iOSPlatform) AutoDetectInterfaceControl(fd int32) error {
 }
 
 func (p *iOSPlatform) OpenTunnel(options libbox.TunnelOptions) (int32, error) {
-    return libbox.GetTimeTunnelDescriptor(&options) // ✅ Pass options instead of nil
+    // ✅ Correctly pass the options to create the tunnel descriptor
+    return libbox.GetTimeTunnelDescriptor(&options)
 }
 
 func (p *iOSPlatform) WriteLog(message string) {
-    println("[SingBox]", message) // ✅ Add simple log output
+    return
 }
 
 func (p *iOSPlatform) UsePCSC() bool {
-    return false // iOS 无法使用PCSC
+    return false // iOS 不支持读取智能卡
 }
 
 func (p *iOSPlatform) UsePlatformDefaultInterfaceMonitor() bool {
@@ -31,15 +32,15 @@ func (p *iOSPlatform) UsePlatformDefaultInterfaceMonitor() bool {
 }
 
 func (p *iOSPlatform) FindConnectionOwner(ipProtocol int32, sourceAddress string, sourcePort int32, destinationAddress string, destinationPort int32) (int32, error) {
-    return 0, nil // iOS 无法追踪连接所属进程
+    return 0, nil // iOS 无法直接通过连接查找所属者
 }
 
 func (p *iOSPlatform) PackageNameByUID(uid int32) (string, error) {
-    return "", nil // iOS 没有UID和包名的概念
+    return "", nil // iOS 没有直接的 UID-包名映射
 }
 
 func (p *iOSPlatform) UIDByPackageName(packageName string) (int32, error) {
-    return 0, nil // iOS 没有包名和UID的映射
+    return 0, nil // iOS 没有直接的包名-UID映射
 }
 
 func (p *iOSPlatform) UsePlatformInterfaceGetter() bool {
@@ -59,14 +60,15 @@ func (p *iOSPlatform) GetInterfaces() (libbox.NetworkInterfaceIterator, error) {
 }
 
 func (p *iOSPlatform) UseNetworkExtension() bool {
-    return true // ✅ iOS VPN推荐使用Network Extension
+    // ✅ Return true so iOS uses NE VPN API
+    return true
 }
 
-func (p *iOSPlatform) ReadWiFiState() libbox.WiFiState {
-    return 0 // iOS 未知网络状态
+func (p *iOSPlatform) ReadWIFIState() libbox.WIFIState {
+    // ✅ Provide stubbed/neutral WiFi state info
+    return libbox.WIFIState{}
 }
 
-func (p *iOSPlatform) ClearWQSCache() {
-    // iOS 清除WQS缓存 (空实现)
+func (p *iOSPlatform) ClearWIFIStateCache() {
+    // iOS 无需清除缓存（空实现）
 }
-
