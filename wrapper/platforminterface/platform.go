@@ -1,91 +1,72 @@
-package platforminterface
+package platform
 
 import (
-	"errors"
+    "github.com/sgameet/sing-box/experimental/libbox"
 )
 
-type IOSPlatform struct{}
+type iOSPlatform struct{}
 
-func (p *IOSPlatform) UsePlatformAutoDetectInterfaceControl() bool {
-	return false
+func (p *iOSPlatform) UsePlatformAutoDetectInterfaceControl() bool {
+    return false
 }
 
-func (p *IOSPlatform) AutoDetectInterfaceControl(uid int32) error {
-	return nil
+func (p *iOSPlatform) AutoDetectInterfaceControl(fd int32) error {
+    return nil
 }
 
-func (p *IOSPlatform) OpenTUNOptions(TunOptions) (any, error) {
-	return nil, errors.New("OpenTUNOptions not implemented")
+func (p *iOSPlatform) OpenTunnel(options libbox.TunnelOptions) (int32, error) {
+    return libbox.GetTimeTunnelDescriptor(&options) // ✅ Pass options instead of nil
 }
 
-func (p *IOSPlatform) WriteLog(message string) {
-	// Optionally write to NSLog or iOS log handler
+func (p *iOSPlatform) WriteLog(message string) {
+    println("[SingBox]", message) // ✅ Add simple log output
 }
 
-func (p *IOSPlatform) UseProcFS() bool {
-	return false
+func (p *iOSPlatform) UsePCSC() bool {
+    return false // iOS 无法使用PCSC
 }
 
-func (p *IOSPlatform) UsePlatformDefaultInterfaceMonitor() bool {
-	return false
+func (p *iOSPlatform) UsePlatformDefaultInterfaceMonitor() bool {
+    return false
 }
 
-// ===== Missing 9 methods fully stubbed below =====
-
-func (p *IOSPlatform) FindConnectionOwner(ipProtocol int32, sourceAddress string, sourcePort int32, destinationAddress string, destinationPort int32) (int32, error) {
-	return 0, errors.New("FindConnectionOwner not implemented")
+func (p *iOSPlatform) FindConnectionOwner(ipProtocol int32, sourceAddress string, sourcePort int32, destinationAddress string, destinationPort int32) (int32, error) {
+    return 0, nil // iOS 无法追踪连接所属进程
 }
 
-func (p *IOSPlatform) PackageNameByUid(uid int32) (string, error) {
-	return "", errors.New("PackageNameByUid not implemented")
+func (p *iOSPlatform) PackageNameByUID(uid int32) (string, error) {
+    return "", nil // iOS 没有UID和包名的概念
 }
 
-func (p *IOSPlatform) UIDByPackageName(packageName string) (int32, error) {
-	return 0, errors.New("UIDByPackageName not implemented")
+func (p *iOSPlatform) UIDByPackageName(packageName string) (int32, error) {
+    return 0, nil // iOS 没有包名和UID的映射
 }
 
-func (p *IOSPlatform) UsePlatformInterfaceGetter() bool {
-	return false
+func (p *iOSPlatform) UsePlatformInterfaceGetter() bool {
+    return false
 }
 
-func (p *IOSPlatform) StartDefaultInterfaceMonitor(listener InterfaceUpdateListener) error {
-	return errors.New("StartDefaultInterfaceMonitor not implemented")
+func (p *iOSPlatform) StartDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
+    return nil
 }
 
-func (p *IOSPlatform) CloseDefaultInterfaceMonitor(listener InterfaceUpdateListener) error {
-	return errors.New("CloseDefaultInterfaceMonitor not implemented")
+func (p *iOSPlatform) CloseDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
+    return nil
 }
 
-func (p *IOSPlatform) GetInterfaces() (NetworkInterfaceIterator, error) {
-	return nil, errors.New("GetInterfaces not implemented")
+func (p *iOSPlatform) GetInterfaces() (libbox.NetworkInterfaceIterator, error) {
+    return nil, nil
 }
 
-func (p *IOSPlatform) UnderNetworkExtension() bool {
-	return true // or false depending on how you wrap sing-box
+func (p *iOSPlatform) UseNetworkExtension() bool {
+    return true // ✅ iOS VPN推荐使用Network Extension
 }
 
-func (p *IOSPlatform) ReadWIFIState() *WIFIState {
-	return nil
+func (p *iOSPlatform) ReadWiFiState() libbox.WiFiState {
+    return 0 // iOS 未知网络状态
 }
 
-func (p *IOSPlatform) ClearDNSCache() {
-	// Not needed or not supported on iOS
+func (p *iOSPlatform) ClearWQSCache() {
+    // iOS 清除WQS缓存 (空实现)
 }
 
-// ====== Optional definitions for types used above ======
-
-type TunOptions struct {
-	// Define according to sing-box’s TunOptions
-}
-
-type InterfaceUpdateListener interface {
-	// Define interface methods if used
-}
-
-type NetworkInterfaceIterator interface {
-	// Define iterator interface if used
-}
-
-type WIFIState struct {
-	// Optional: Implement according to your app’s need
-}
