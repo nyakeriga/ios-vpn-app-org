@@ -14,15 +14,29 @@ import (
 	libbox "github.com/sagernet/sing-box/experimental/libbox"
 )
 
+type dummyPlatform struct{}
+
+func (d *dummyPlatform) Log(level, message string) {
+	fmt.Printf("[libbox][%s] %s\n", level, message)
+}
+
+func (d *dummyPlatform) GetConfigFilePath() string {
+	return "" // not used since we're passing config as path below
+}
+
+func (d *dummyPlatform) UsePlatformDefaultInterfaceMonitor() bool {
+	return true
+}
+
 var (
-	service   *libbox.Service
+	service   *libbox.BoxService
 	ctx       context.Context
 	cancel    context.CancelFunc
 	serviceMu sync.Mutex
 )
 
 //export StartSingbox
-func StartSingbox(configJson *C.char) C.int {
+func StartSingbox(configPath *C.char) C.int {
 	serviceMu.Lock()
 	defer serviceMu.Unlock()
 
@@ -31,14 +45,11 @@ func StartSingbox(configJson *C.char) C.int {
 		return 1
 	}
 
-	cfg := C.GoString(configJson)
-
+	cfg := C.GoString(configPath)
 	ctx, cancel = context.WithCancel(context.Background())
 
 	var err error
-	service, err = libbox.NewService(libbox.Options{
-		Config: []byte(cfg),
-	})
+	service, err = libbox.NewService(cfg, &dummyPlatform{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create service: %v\n", err)
 		return 1
@@ -72,4 +83,5 @@ func StopSingbox() {
 }
 
 func main() {}
+
 
