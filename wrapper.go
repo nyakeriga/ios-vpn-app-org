@@ -6,7 +6,6 @@ package main
 import "C"
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -28,10 +27,12 @@ func (d *dummyPlatform) UsePlatformDefaultInterfaceMonitor() bool {
 	return true
 }
 
+func (d *dummyPlatform) AutoDetectInterfaceControl() bool {
+	return true
+}
+
 var (
 	service   *libbox.BoxService
-	ctx       context.Context
-	cancel    context.CancelFunc
 	serviceMu sync.Mutex
 )
 
@@ -46,7 +47,6 @@ func StartSingbox(configPath *C.char) C.int {
 	}
 
 	cfgPath := C.GoString(configPath)
-	ctx, cancel = context.WithCancel(context.Background())
 
 	var err error
 	service, err = libbox.NewService(cfgPath, &dummyPlatform{})
@@ -56,7 +56,7 @@ func StartSingbox(configPath *C.char) C.int {
 	}
 
 	go func() {
-		if err := service.Start(ctx); err != nil {
+		if err := service.Start(); err != nil {
 			fmt.Fprintf(os.Stderr, "Sing-box service error: %v\n", err)
 		}
 	}()
@@ -70,11 +70,6 @@ func StopSingbox() {
 	serviceMu.Lock()
 	defer serviceMu.Unlock()
 
-	if cancel != nil {
-		cancel()
-		cancel = nil
-	}
-
 	if service != nil {
 		_ = service.Close()
 		service = nil
@@ -83,5 +78,6 @@ func StopSingbox() {
 }
 
 func main() {}
+
 
 
