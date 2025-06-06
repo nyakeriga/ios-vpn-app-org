@@ -21,7 +21,7 @@ func (d *dummyPlatform) Log(level, message string) {
 }
 
 func (d *dummyPlatform) GetConfigFilePath() string {
-	return "" // not used since we're passing config as path below
+	return ""
 }
 
 func (d *dummyPlatform) UsePlatformDefaultInterfaceMonitor() bool {
@@ -45,11 +45,11 @@ func StartSingbox(configPath *C.char) C.int {
 		return 1
 	}
 
-	cfg := C.GoString(configPath)
+	cfgPath := C.GoString(configPath)
 	ctx, cancel = context.WithCancel(context.Background())
 
 	var err error
-	service, err = libbox.NewService(cfg, &dummyPlatform{})
+	service, err = libbox.NewService(cfgPath, &dummyPlatform{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create service: %v\n", err)
 		return 1
