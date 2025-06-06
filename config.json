@@ -35,11 +35,28 @@
           "Host": "r3.wy888.us"
         }
       }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
     }
   ],
   "route": {
     "auto_detect_interface": true,
-    "override_android_vpn": true
+    "override_android_vpn": true,
+    "rules": [
+      {
+        "ip_cidr": [
+          "0.0.0.0/0",
+          "::/0"
+        ],
+        "outbound": "vmess-out"
+      }
+    ]
   },
   "dns": {
     "servers": [
