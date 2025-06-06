@@ -1,74 +1,74 @@
 package platform
 
 import (
-    "github.com/sagernet/sing-box/experimental/libbox"
+	"github.com/sagernet/sing-box/experimental/libbox"
 )
 
 type iOSPlatform struct{}
 
+// ✅ NE VPN will manage the tunnel, we stub this
+func (p *iOSPlatform) OpenTunnel(options libbox.TunnelOptions) (int32, error) {
+	// iOS does not support dynamic tunnel interfaces from Go
+	return -1, nil
+}
+
 func (p *iOSPlatform) UsePlatformAutoDetectInterfaceControl() bool {
-    return false
+	return false
 }
 
 func (p *iOSPlatform) AutoDetectInterfaceControl(fd int32) error {
-    return nil
-}
-
-func (p *iOSPlatform) OpenTunnel(options libbox.TunnelOptions) (int32, error) {
-    // ✅ Correctly pass the options to create the tunnel descriptor
-    return libbox.GetTimeTunnelDescriptor(&options)
+	return nil
 }
 
 func (p *iOSPlatform) WriteLog(message string) {
-    return
+	// No-op or send to NSLog if needed
 }
 
 func (p *iOSPlatform) UsePCSC() bool {
-    return false // iOS 不支持读取智能卡
+	return false // iOS does not support smartcard/PCSC
 }
 
 func (p *iOSPlatform) UsePlatformDefaultInterfaceMonitor() bool {
-    return false
+	return false
 }
 
 func (p *iOSPlatform) FindConnectionOwner(ipProtocol int32, sourceAddress string, sourcePort int32, destinationAddress string, destinationPort int32) (int32, error) {
-    return 0, nil // iOS 无法直接通过连接查找所属者
+	return 0, nil // iOS can't inspect connection ownership
 }
 
 func (p *iOSPlatform) PackageNameByUID(uid int32) (string, error) {
-    return "", nil // iOS 没有直接的 UID-包名映射
+	return "", nil
 }
 
 func (p *iOSPlatform) UIDByPackageName(packageName string) (int32, error) {
-    return 0, nil // iOS 没有直接的包名-UID映射
+	return 0, nil
 }
 
 func (p *iOSPlatform) UsePlatformInterfaceGetter() bool {
-    return false
+	return false
 }
 
 func (p *iOSPlatform) StartDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
-    return nil
+	return nil
 }
 
 func (p *iOSPlatform) CloseDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
-    return nil
+	return nil
 }
 
 func (p *iOSPlatform) GetInterfaces() (libbox.NetworkInterfaceIterator, error) {
-    return nil, nil
+	return nil, nil
 }
 
 func (p *iOSPlatform) UseNetworkExtension() bool {
-    // ✅ Return true so iOS uses NE VPN API
-    return true
+	return true // ✅ Required for iOS NEVPN
 }
 
 func (p *iOSPlatform) ReadWIFIState() libbox.WIFIState {
-    // ✅ Provide stubbed/neutral WiFi state info
-    return libbox.WIFIState{}
+	return libbox.WIFIState{} // ✅ Stubbed response
 }
 
 func (p *iOSPlatform) ClearWIFIStateCache() {
-    // iOS 无需清除缓存（空实现）
+	// Nothing to clear
 }
+
