@@ -73,4 +73,3 @@ func StopSingbox() {
 
 func main() {}
 
-func main() {}
