@@ -1,18 +1,22 @@
 import NetworkExtension
 import os.log
-import Singbox // Import your Go framework bridge
+import Singbox
+import Foundation
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
 
     private let logger = OSLog(subsystem: "com.ns.vpn", category: "PacketTunnel")
     private var isSimulationMode = false
+    private var logFileHandle: FileHandle?
+    private var packetCountTimer: Timer?
 
     override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         print("=== VPN Starting ===")
-        print("Startup parameters: \(options ?? [:])")
-        os_log("Starting VPN tunnel...", log: logger, type: .info)
+        log("VPN Start: \(options ?? [:])")
 
-        // VPN Configuration JSON
+        setupFileLogging()
+
+        // VPN Configuration JSON (same as before)
         let configJSON = """
         {
           "log": {
@@ -68,91 +72,104 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
         """
 
-        print("VPN configuration prepared")
-        print("Configuration length: \(configJSON.count) characters")
-
-        // Network Settings
+        // Tunnel settings
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "172.19.0.2")
         settings.ipv4Settings = NEIPv4Settings(addresses: ["172.19.0.1"], subnetMasks: ["255.255.255.252"])
         settings.mtu = 1500
         settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "1.1.1.1"])
 
-        print("Network settings configured, applying settings...")
+        log("Applying tunnel settings...")
 
         setTunnelNetworkSettings(settings) { error in
             if let error = error {
-                print("❌ Failed to apply network settings: \(error.localizedDescription)")
-                os_log("Failed to apply tunnel settings: %{public}@", log: self.logger, type: .error, error.localizedDescription)
+                self.log("❌ Tunnel settings error: \(error.localizedDescription)")
                 completionHandler(error)
                 return
             }
 
-            print("✅ Network settings applied successfully, starting SingBox engine...")
+            self.log("✅ Tunnel settings applied. Starting Singbox...")
 
             let result = configJSON.withCString { cString in
                 let pointer = UnsafeMutablePointer(mutating: cString)
-                print("Pointer debug information:")
-                print("  - Pointer address: \(String(format: "0x%llx", UInt(bitPattern: pointer)))")
-                print("  - First 64 chars: \(String(cString: cString).prefix(64))")
                 return StartSingbox(pointer)
             }
 
-            print("StartSingbox call completed, return code: \(result)")
-
             if result != 0 {
-                print("🚨 SINGBOX ENGINE STARTUP FAILED!")
-                print("Error Code: \(result)")
-                switch result {
-                case 1:
-                    print(" • JSON parsing error – check configuration format.")
-                case 2:
-                    print(" • Engine creation failed – possible system/Go runtime issue.")
-                default:
-                    print(" • Unknown error – code: \(result)")
-                }
-
-                print("⚠️ Activating simulation mode for fallback.")
+                self.log("🚨 StartSingbox failed (code \(result)) – falling back to simulation mode.")
                 self.isSimulationMode = true
-                os_log("Singbox failed to start, entering simulation mode. Code: %d", log: self.logger, type: .fault, result)
                 completionHandler(nil)
             } else {
-                print("✅ SingBox engine started successfully")
+                self.log("✅ Singbox started successfully.")
                 self.isSimulationMode = false
-                os_log("SingBox started successfully.", log: self.logger, type: .info)
+                self.startPacketLogging()
                 completionHandler(nil)
             }
         }
     }
 
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        print("=== VPN Stopping ===")
-        print("Stop reason: \(reason)")
-
-        switch reason {
-        case .userInitiated: print("User initiated stop.")
-        case .providerFailed: print("Provider failed.")
-        case .noNetworkAvailable: print("No network available.")
-        case .unrecoverableNetworkChange: print("Unrecoverable network change.")
-        case .configurationFailed: print("Configuration failed.")
-        case .idleTimeout: print("Idle timeout.")
-        case .configurationRemoved: print("Configuration removed.")
-        case .connectionFailed: print("Connection failed.")
-        case .appUpdate: print("App update.")
-        case .internalError: print("Internal error.")
-        default: print("Other reason: \(reason.rawValue)")
-        }
-
-        os_log("Stopping VPN tunnel...", log: logger, type: .info)
+        log("=== VPN Stopping: Reason \(reason.rawValue) ===")
 
         if !isSimulationMode {
-            print("Stopping SingBox engine...")
             StopSingbox()
-            print("✅ SingBox engine stopped.")
-        } else {
-            print("⚠️ Simulation mode - Skipping engine stop.")
+            log("✅ Singbox engine stopped.")
         }
 
-        os_log("Singbox stopped.", log: logger, type: .info)
+        packetCountTimer?.invalidate()
+        logFileHandle?.closeFile()
+        logFileHandle = nil
+
         completionHandler()
+    }
+
+    // MARK: - Helpers
+
+    private func setupFileLogging() {
+        let fileManager = FileManager.default
+        let logsURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ns.vpn")?.appendingPathComponent("vpn.log")
+
+        if let url = logsURL {
+            if !fileManager.fileExists(atPath: url.path) {
+                fileManager.createFile(atPath: url.path, contents: nil, attributes: nil)
+            }
+            do {
+                logFileHandle = try FileHandle(forWritingTo: url)
+                logFileHandle?.seekToEndOfFile()
+                log("📄 Log file initialized at \(url.path)")
+            } catch {
+                print("⚠️ Failed to open log file: \(error)")
+            }
+        }
+    }
+
+    private func log(_ message: String) {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let fullMessage = "[\(timestamp)] \(message)\n"
+        print(fullMessage)
+
+        if let data = fullMessage.data(using: .utf8) {
+            logFileHandle?.write(data)
+        }
+    }
+
+    private func startPacketLogging() {
+        packetCountTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+            self?.log("📊 Checking packet counts...")
+        }
+
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            var totalPackets = 0
+            while true {
+                guard let strongSelf = self else { return }
+                if let packet = strongSelf.packetFlow.readPackets()?.first {
+                    totalPackets += 1
+                    if totalPackets % 100 == 0 {
+                        strongSelf.log("📦 Total packets seen: \(totalPackets)")
+                    }
+                } else {
+                    usleep(10000) // 10ms
+                }
+            }
+        }
     }
 }
