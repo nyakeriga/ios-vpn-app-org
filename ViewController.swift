@@ -1,11 +1,12 @@
-
 import UIKit
 import NetworkExtension
+import SingBox
 
 class ViewController: UIViewController {
 
     private let vpnBundleId = "com.example.iosvpn.PacketTunnel"
     private let vpnDescription = "SingBox VPN"
+    private let vpn = LibboxwrapperVPN()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -35,10 +36,10 @@ class ViewController: UIViewController {
             }
 
             if let existingManager = managers?.first(where: { $0.protocolConfiguration?.providerBundleIdentifier == self.vpnBundleId }) {
-                print("Existing VPN configuration loaded")
+                print("✅ Existing VPN configuration loaded")
                 self.setupManager(existingManager)
             } else {
-                print("No existing VPN configuration found. Creating a new one.")
+                print("🔧 No existing VPN config. Creating new one.")
                 self.createVPNConfig()
             }
         }
@@ -55,9 +56,9 @@ class ViewController: UIViewController {
 
         manager.saveToPreferences { error in
             if let error = error {
-                print("Error saving VPN configuration: \(error)")
+                print("❌ Error saving VPN config: \(error)")
             } else {
-                print("VPN configuration saved successfully")
+                print("✅ VPN config saved")
             }
         }
     }
@@ -66,9 +67,9 @@ class ViewController: UIViewController {
         manager.isEnabled = true
         manager.saveToPreferences { error in
             if let error = error {
-                print("Failed to enable VPN: \(error)")
+                print("❌ Failed to enable VPN: \(error)")
             } else {
-                print("VPN enabled")
+                print("✅ VPN enabled")
             }
         }
     }
@@ -78,8 +79,30 @@ class ViewController: UIViewController {
     @objc private func toggleVPN() {
         NETunnelProviderManager.loadAllFromPreferences { managers, error in
             if let error = error {
-                print("Error loading VPN managers: \(error)")
+                print("❌ Error loading managers: \(error)")
                 return
             }
 
-            guard let manager =
+            guard let manager = managers?.first(where: { $0.protocolConfiguration?.providerBundleIdentifier == self.vpnBundleId }) else {
+                print("❌ No manager found")
+                return
+            }
+
+            do {
+                try manager.connection.startVPNTunnel()
+                print("✅ VPN Tunnel started")
+            } catch {
+                print("❌ Failed to start tunnel via NETunnelProvider: \(error)")
+            }
+
+            // Use your custom static lib VPN wrapper
+            let (_, startError) = self.vpn.startTunnel()
+            if let startError = startError {
+                print("❌ Tunnel failed via wrapper: \(startError)")
+            } else {
+                print("✅ Tunnel started via wrapper")
+            }
+        }
+    }
+}
+
