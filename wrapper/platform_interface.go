@@ -1,23 +1,27 @@
-package platform
+package wrapper
 
 import (
-	"github.com/sagernet/sing-box/experimental/libbox"
+	libbox "github.com/sagernet/sing-box"
+	"github.com/nyakeriga/ios-vpn-app-org/wrapper/platform" // Adjust if different
 )
 
-type iOSPlatform struct{}
+var service *libbox.Service
 
-// ✅ NE VPN will manage the tunnel, we stub this
-func (p *iOSPlatform) OpenTunnel(options libbox.TunnelOptions) (int32, error) {
-	// iOS does not support dynamic tunnel interfaces from Go
-	return -1, nil
+// StartVPN starts the VPN service
+func StartVPN(configPath string) error {
+	var err error
+	service, err = libbox.NewService(configPath, &platform.iOSPlatform{})
+	if err != nil {
+		return err
+	}
+	return service.Start()
 }
 
-func (p *iOSPlatform) UsePlatformAutoDetectInterfaceControl() bool {
-	return false
-}
-
-func (p *iOSPlatform) AutoDetectInterfaceControl(fd int32) error {
-	return nil
+// StopVPN stops the VPN service
+func StopVPN() {
+	if service != nil {
+		service.Close()
+	}
 }
 
 func (p *iOSPlatform) WriteLog(message string) {
