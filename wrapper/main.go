@@ -1,17 +1,25 @@
-package main
+package wrapper
 
 import (
 	libbox "github.com/sagernet/sing-box"
-	"yourmodule/wrapper" // Replace with your actual Go module path
+	"github.com/nyakeriga/ios-vpn-app-org/wrapper/platform" // Adjust if needed
 )
 
-func main() {
-	configPath := "/path/to/config.json" // Replace with actual config path
-	service, err := libbox.NewService(configPath, &wrapper.iOSPlatform{})
+var service *libbox.Service
+
+// StartVPN starts the VPN using a given config path
+func StartVPN(configPath string) error {
+	var err error
+	service, err = libbox.NewService(configPath, &platform.iOSPlatform{})
 	if err != nil {
-		panic(err)
+		return err
 	}
-	service.Start()
+	return service.Start()
 }
 
-
+// StopVPN stops the VPN service
+func StopVPN() {
+	if service != nil {
+		service.Close()
+	}
+}
